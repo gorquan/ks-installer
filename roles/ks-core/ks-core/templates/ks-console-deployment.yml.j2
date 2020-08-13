@@ -8,6 +8,10 @@ metadata:
   name: ks-console
   namespace: kubesphere-system
 spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
 {% if master_num is defined and master_num != "0" %}
   replicas: {{ master_num }}
 {% else %}
@@ -24,9 +28,7 @@ spec:
         app: ks-console
         tier: frontend
         version: {{ ks_version }}
-    spec:
-      imagePullSecrets:
-      - name: qingcloud     
+    spec:   
       containers:
       - image: {{ ks_console_repo }}:{{ ks_console_tag }}
         imagePullPolicy: {{ ks_image_pull_policy }}
@@ -39,16 +41,21 @@ spec:
             cpu: {{ ks_console_cpu_requests }}
             memory: {{ ks_console_memory_requests }}
         volumeMounts:
-        # - mountPath: /etc/kubernetes/pki
-        #   name: ca-dir
-        - mountPath: /root/KubeSphereUI/server/local_config.yaml
+        - mountPath: /opt/kubesphere/console/server/local_config.yaml
           name: ks-console-config
           subPath: local_config.yaml
-        - mountPath: /root/KubeSphereUI/server/sample
+        - mountPath: /opt/kubesphere/console/server/sample
           name: sample-bookinfo
-      # - image: {{ redis_repo }}:{{ redis_tag }}
-      #   imagePullPolicy: IfNotPresent
-      #   name: redis
+        - mountPath: /etc/localtime
+          name: host-time
+        livenessProbe:
+          failureThreshold: 8
+          httpGet:
+            path: /
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 15
+          timeoutSeconds: 15
       serviceAccount: kubesphere
       serviceAccountName: kubesphere
       tolerations:
@@ -88,10 +95,6 @@ spec:
             - kubesphere-system
 {% endif %}
       volumes:
-      # - name: ca-dir
-      #   secret:
-      #     defaultMode: 420
-      #     secretName: front-proxy-client
       - configMap:
           defaultMode: 420
           name: ks-console-config
@@ -103,4 +106,8 @@ spec:
           defaultMode: 420
           name: sample-bookinfo
         name: sample-bookinfo
+      - hostPath:
+          path: /etc/localtime
+          type: ""
+        name: host-time
         

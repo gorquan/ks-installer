@@ -82,14 +82,14 @@
   failed_when: "cm_state.stderr and 'AlreadyExists' not in cm_state.stderr"
 
 
-- name: KubeSphere | Update kubectl image
-  shell: >
-    for deploy in $(kubectl -n kubesphere-controls-system get deploy  | grep kubectl  | awk '{print $1}');
-    do kubectl -n kubesphere-controls-system set image deployment/$deploy kubectl={{ ks_kubectl_repo }}:{{ ks_kubectl_tag }};
-    done
-  when:
-    - account_version.stdout and account_version.stdout != 'v2.1.1'
-  ignore_errors: True
+# - name: KubeSphere | Update kubectl image
+#   shell: >
+#     for deploy in $(kubectl -n kubesphere-controls-system get deploy  | grep kubectl  | awk '{print $1}');
+#     do kubectl -n kubesphere-controls-system set image deployment/$deploy kubectl={{ ks_kubectl_repo }}:{{ ks_kubectl_tag }};
+#     done
+#   when:
+#     - account_version.stdout and account_version.stdout != 'v2.1.1'
+#   ignore_errors: True
 
 - name: KubeSphere | Creating ks-core
   command: >
@@ -126,4 +126,15 @@
   when:
     - ks_svc.stdout.find("ks-console") != -1
 
+- name: KubeSphere | import ks-core status
+  shell: >
+    {{ bin_dir }}/kubectl patch cc ks-installer
+    --type merge
+    -p '{"status": {"core": {"status": "enabled", "enabledTime": "{{ lookup('pipe','date  +%Y-%m-%dT%H:%M:%S%Z') }}"}}}'
+    -n kubesphere-system
+  register: import
+  failed_when: "import.stderr and 'Warning' not in import.stderr"
+  until: import is succeeded
+  retries: 5
+  delay: 3
 

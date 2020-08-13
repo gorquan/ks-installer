@@ -8,6 +8,10 @@ metadata:
   name: ks-apiserver
   namespace: kubesphere-system
 spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
 {% if master_num is defined and master_num != "0" %}
   replicas: {{ master_num }}
 {% else %}
@@ -49,6 +53,16 @@ spec:
           name: ks-router-config
         - mountPath: /etc/kubesphere/
           name: kubesphere-config
+        - mountPath: /etc/localtime
+          name: host-time
+        livenessProbe:
+          failureThreshold: 8
+          httpGet:
+            path: /kapis/version
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 15
+          timeoutSeconds: 15
       serviceAccount: kubesphere
       serviceAccountName: kubesphere
       tolerations:
@@ -100,7 +114,10 @@ spec:
           defaultMode: 420
           name: kubesphere-config
         name: kubesphere-config
-
+      - hostPath:
+          path: /etc/localtime
+          type: ""
+        name: host-time
 
 ---
 

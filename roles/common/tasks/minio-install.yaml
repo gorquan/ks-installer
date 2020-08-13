@@ -16,7 +16,7 @@
 
 - name: Kubesphere | Check minio
   shell: >
-    {{ bin_dir }}/helm list ks-minio
+    {{ bin_dir }}/helm list -n kubesphere-system | grep "ks-minio"
   register: minio_check
   ignore_errors: True
 
@@ -37,9 +37,10 @@
     - debug:
         msg:
          - 1. check the storage configuration and storage server
-         - 2. make sure the DNS address in /etc/resolv.conf is available.
-         - 3. execute 'helm del --purge ks-minio && kubectl delete job -n kubesphere-system ks-minio-make-bucket-job'
-         - 4. Restart the installer pod in kubesphere-system namespace
+         - 2. make sure the DNS address in /etc/resolv.conf is available
+         - 3. execute 'kubectl logs -n kubesphere-system -l job-name=minio-make-bucket-job' to watch logs
+         - 4. execute 'helm del ks-minio && kubectl delete job -n kubesphere-system ks-minio-make-bucket-job'
+         - 5. Restart the installer pod in kubesphere-system namespace
       when: minio_status.rc != 0
 
 
@@ -47,7 +48,7 @@
         msg: "It is suggested to refer to the above methods for troubleshooting problems ."
       when: minio_status.rc != 0
   when:
-    - (minio_check.stdout.find("DEPLOYED") == -1) or (minio_check.stdout.find("RELEASE.2019-08-07T01-59-21Z") == -1)
+    - (minio_check.stdout.find("deployed") == -1) or (minio_check.stdout.find("RELEASE.2019-08-07T01-59-21Z") == -1)
 
 - name: Kubesphere | create minio config directory
   file:
@@ -73,3 +74,16 @@
     - vmbased
   when:
     - openpitrix_component_pod.stdout.find("openpitrix-minio-deployment") != -1
+
+
+- name: Kubesphere | import minio status
+  shell: >
+    {{ bin_dir }}/kubectl patch cc ks-installer
+    --type merge
+    -p '{"status": {"minio": {"status": "enabled", "enabledTime": "{{ lookup('pipe','date  +%Y-%m-%dT%H:%M:%S%Z') }}"}}}'
+    -n kubesphere-system
+  register: import
+  failed_when: "import.stderr and 'Warning' not in import.stderr"
+  until: import is succeeded
+  retries: 5
+  delay: 3

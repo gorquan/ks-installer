@@ -8,6 +8,10 @@ metadata:
   name: ks-controller-manager
   namespace: kubesphere-system
 spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
   progressDeadlineSeconds: 600
 {% if master_num is defined and master_num != "0" %}
   replicas: {{ master_num }}
@@ -27,7 +31,6 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: ks-controller-manager
         tier: backend
@@ -44,10 +47,12 @@ spec:
         ports:
         - containerPort: 8080
           protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
         resources:
           limits:
-            cpu: 500m
-            memory: 500Mi
+            cpu: 1000m
+            memory: 1000Mi
           requests:
             cpu: 30m
             memory: 50Mi
@@ -56,6 +61,10 @@ spec:
           name: kubesphere-config
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-secret
+        - mountPath: /var/lib/kubelet/plugins/
+          name: kubelet-plugin
+        - mountPath: /etc/localtime
+          name: host-time
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -71,6 +80,14 @@ spec:
           secret:
             defaultMode: 420
             secretName: ks-controller-manager-webhook-cert
+        - name: kubelet-plugin
+          hostPath:
+            path: /var/lib/kubelet/plugins/
+            type: DirectoryOrCreate
+        - hostPath:
+            path: /etc/localtime
+            type: ""
+          name: host-time
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
@@ -323,3 +340,26 @@ subjects:
 - kind: ServiceAccount
   name: ks-controller-manager
   namespace: kubesphere-system
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ks-controller-manager
+    tier: backend
+    version: v3.0.0
+  name: ks-controller-manager
+  namespace: kubesphere-system
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app: ks-controller-manager
+    tier: backend
+    version: {{ ks_version }}
+  sessionAffinity: None
+  type: ClusterIP

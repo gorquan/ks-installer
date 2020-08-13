@@ -7,7 +7,7 @@
   register: metrics_server_old_check
 
 
-- name: Metrics-Server | deleting old prometheus-operator
+- name: Metrics-Server | deleting old metrics-server
   shell: "{{ bin_dir }}/kubectl delete -f {{ kubesphere_dir }}/metrics-server/"
   register: import
   failed_when: "import.stderr and 'NotFound' not in import.stderr"
@@ -54,7 +54,7 @@
 
     - name: Metrics-Server | Installing metrics-server retry
       shell: >
-        {{ bin_dir }}/helm del --purge metrics-server &&
+        {{ bin_dir }}/helm del metrics-server -n kube-system &&
         sleep 5 &&
         {{ bin_dir }}/helm upgrade --install metrics-server {{ kubesphere_dir }}/metrics-server --namespace kube-system
       when:
@@ -69,3 +69,16 @@
   until: metrics_health.stdout.find("True") != -1
   retries: 60
   delay: 10
+
+
+- name: Metrics-Server | import metrics-server status
+  shell: >
+    {{ bin_dir }}/kubectl patch cc ks-installer
+    --type merge
+    -p '{"status": {"metricsServer": {"status": "enabled", "enabledTime": "{{ lookup('pipe','date  +%Y-%m-%dT%H:%M:%S%Z') }}"}}}'
+    -n kubesphere-system
+  register: import
+  failed_when: "import.stderr and 'Warning' not in import.stderr"
+  until: import is succeeded
+  retries: 5
+  delay: 3

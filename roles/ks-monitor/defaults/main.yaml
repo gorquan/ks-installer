@@ -6,17 +6,17 @@ monitoring:
   prometheusVolumeSize: 20Gi
   prometheus:
     limits:
-      cpu: 4 
-      memory: 16Gi 
+      cpu: 8
+      memory: 32Gi
     requests:
-      cpu: 200m
+      cpu: 80m
       memory: 400Mi
   node_exporter:
     limits:
-      cpu: 300m
-      memory: 400Mi
+      cpu: 600m
+      memory: 500Mi
     requests:
-      cpu: 102m
+      cpu: 51m
       memory: 180Mi
   kube_rbac_proxy:
     limits:
@@ -27,10 +27,10 @@ monitoring:
       memory: 20Mi 
   kube_state_metrics:
     limits:
-      cpu: 500m
-      memory: 2Gi
+      cpu: 4
+      memory: 8Gi
     requests:
-      cpu: 100m
+      cpu: 50m
       memory: 150Mi 
   prometheus_adapter:
     limits:
@@ -41,8 +41,8 @@ monitoring:
       memory: 250Mi 
   alertmanager:
     limits:
-      cpu: 200m
-      memory: 200Mi
+      cpu: 500m
+      memory: 500Mi
     requests:
       cpu: 20m
       memory: 30Mi 

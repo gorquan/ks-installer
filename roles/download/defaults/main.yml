@@ -40,21 +40,21 @@ kube_version: v1.15.5
 etcd_version: v3.2.18
 # kube image repo define
 ks_image_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}
   {%- else -%}
   dockerhub.qingcloud.com
   {%- endif %}
 
 base_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}/
   {%- else -%}
 
   {%- endif %}
 
 base_library_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}/library/
   {%- else -%}
 
@@ -62,7 +62,7 @@ base_library_repo: >-
 
 # quay image repo define
 quay_image_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}
   {%- else -%}
   quay.azk8s.cn
@@ -70,7 +70,7 @@ quay_image_repo: >-
 
 # elastic image repo define
 elastic_image_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}
   {%- else -%}
   docker.elastic.co
@@ -78,7 +78,7 @@ elastic_image_repo: >-
 
 # gcr and kubernetes image repo define
 gcr_image_repo: >-
-  {% if local_registry is defined -%}
+  {% if local_registry is defined and local_registry != "" -%}
   {{ local_registry }}
   {%- else -%}
   gcr.azk8s.cn
@@ -110,7 +110,7 @@ ks_update_tag: "advanced-2.0.0"
 ks_devops_flyway_repo: "{{ base_repo }}kubesphere/ks-devops"
 ks_devops_flyway_tag: "flyway-v2.1.0"
 ks_console_repo: "{{ base_repo }}kubespheredev/ks-console"
-ks_console_tag: dev
+ks_console_tag: latest
 ks_kubectl_repo: "{{ base_repo }}kubesphere/kubectl"
 ks_kubectl_tag: v1.0.0
 ks_docs_repo: "{{ base_repo }}kubesphere/ks-docs"
@@ -120,8 +120,8 @@ ks_devops_tag: advanced-2.0.0-dev
 cloud_controller_manager_repo: "{{ base_repo }}kubesphere/cloud-controller-manager"
 cloud_controller_manager_tag: v1.4.0
 
-ks_image_pull_policy: IfNotPresent
-#ks_image_pull_policy: Always
+# ks_image_pull_policy: IfNotPresent
+ks_image_pull_policy: Always
 
 #ks-hostnic
 ks_hostnic_repo: "kubesphere/hostnic"
@@ -132,16 +132,16 @@ ks_installer_repo: "{{ base_repo }}kubesphere/ks-installer"
 ks_installer_tag: v2.1.1
 
 #ks-notification
-notification_flyway_repo: "{{ base_repo }}kubesphere/notification"
-notification_flyway_tag: "flyway_v2.1.0"
-notification_repo: "{{ base_repo }}kubesphere/notification"
-notification_tag: "v2.1.0"
-alerting_dbinit_repo: "{{ base_repo }}kubesphere/alerting-dbinit"
-alerting_dbinit_tag: "v2.1.0"
-ks_alerting_repo: "{{ base_repo }}kubesphere/alerting"
-ks_alerting_tag: "v2.1.0"
-ks_alerting_adapter_repo: "{{ base_repo }}kubesphere/alert_adapter"
-ks_alerting_adapter_tag: "v2.1.0"
+notification_flyway_repo: "{{ base_repo }}kubespheredev/notification"
+notification_flyway_tag: "flyway_v2.1.2"
+notification_repo: "{{ base_repo }}kubespheredev/notification"
+notification_tag: "v2.1.2"
+alerting_dbinit_repo: "{{ base_repo }}kubespheredev/alerting-dbinit"
+alerting_dbinit_tag: "v3.0.0"
+ks_alerting_repo: "{{ base_repo }}kubespheredev/alerting"
+ks_alerting_tag: "v2.1.2"
+ks_alerting_adapter_repo: "{{ base_repo }}kubespheredev/alert_adapter"
+ks_alerting_adapter_tag: "v3.0.0"
 
 # kubefed, kubesphere multiple cluster component
 kubefed_repo: "{{ base_repo }}kubesphere"
@@ -153,7 +153,7 @@ tower_image_tag: latest
 
 #openpitrix:
 # op_version: "latest"
-op_version: "v3beta"
+op_version: "latest"
 openpitrix_repo: "{{ base_repo }}openpitrix/openpitrix"
 openpitrix_tag: "{{ op_version }}"
 openpitrix_flyway_repo: "{{ base_repo }}openpitrix/openpitrix"
@@ -163,9 +163,15 @@ openpitrix_flyway_tag: "flyway-v0.4.8"
 # openpitrix_runtime_provider_kubernetes_tag: "latest"
 # openpitrix_runtime_provider_kubernetes_tag: "v0.1.3"
 release_app_repo: "{{ base_repo }}openpitrix/release-app"
-release_app_tag: v0.4.3
+release_app_tag: latest
+generate_kubeconfig_repo: "{{ base_repo }}openpitrix/generate-kubeconfig"
+generate_kubeconfig_tag: latest
 minio_repo: "{{ base_repo }}minio/minio"
 minio_tag: RELEASE.2019-08-07T01-59-21Z
+
+#ks-hostnic
+snapshot_controller_repo: "{{ base_repo }}csiplugin/snapshot-controller"
+snapshot_controller_tag: "v2.0.1"
 
 #qingcloud-csi:
 csi_provisioner_repo: "{{ base_repo }}quay.azk8s.cn/k8scsi/csi-provisioner"
@@ -241,8 +247,8 @@ harbor_core_repo: "{{ base_repo }}goharbor/harbor-core"
 harbor_core_tag: "{{ harbor_version }}"
 
 #jenkins:
-jenkins_uc_repo:  "{{ base_repo }}kubesphere/jenkins-uc"
-jenkins_uc_tag: v2.1.1
+jenkins_uc_repo:  "{{ base_repo }}kubespheredev/jenkins-uc"
+jenkins_uc_tag: v3.0.0
 jenkins_repo: "{{ base_repo }}jenkins/jenkins"
 jenkins_tag: 2.176.2
 jnlp_slave_repo: "{{ base_repo }}jenkins/jnlp-slave"
@@ -324,12 +330,12 @@ gitlab_busybox_tag: 1.31.1
 #ks-monitor:
 configmap_reload_repo: "{{ base_repo }}jimmidyson/configmap-reload"
 configmap_reload_tag: v0.3.0
-prometheus_repo: "{{ base_repo }}kubesphere/prometheus"
-prometheus_tag: v2.17.2
+prometheus_repo: "{{ base_repo }}prom/prometheus"
+prometheus_tag: v2.20.1
 prometheus_config_reloader_repo: "{{ base_repo }}kubesphere/prometheus-config-reloader"
-prometheus_config_reloader_tag: v0.38.1
+prometheus_config_reloader_tag: v0.38.3
 prometheus_operator_repo: "{{ base_repo }}kubesphere/prometheus-operator"
-prometheus_operator_tag: v0.38.1
+prometheus_operator_tag: v0.38.3
 kube_rbac_proxy_repo: "{{ base_repo }}kubesphere/kube-rbac-proxy"
 kube_rbac_proxy_tag: v0.4.1
 kube_state_metrics_repo: "{{ base_repo }}kubesphere/kube-state-metrics"
@@ -338,8 +344,8 @@ node_exporter_repo: "{{ base_repo }}kubesphere/node-exporter"
 node_exporter_tag: ks-v0.18.1
 prometheus_adapter_repo: "{{ base_repo }}kubesphere/k8s-prometheus-adapter-amd64"
 prometheus_adapter_tag: v0.6.0
-alertmanager_repo: "{{ base_repo }}kubesphere/alertmanager"
-alertmanager_tag: v0.20.0
+alertmanager_repo: "{{ base_repo }}prom/alertmanager"
+alertmanager_tag: v0.21.0
 grafana_repo: "{{ base_repo }}grafana/grafana"
 grafana_tag: 6.6.0
 
@@ -347,9 +353,9 @@ grafana_tag: 6.6.0
 notification_manager_operator_proxy_repo: "{{ base_repo }}kubesphere/kube-rbac-proxy"
 notification_manager_operator_proxy_tag: v0.4.1
 notification_manager_operator_repo: "{{ base_repo }}kubesphere/notification-manager-operator"
-notification_manager_operator_tag: latest
+notification_manager_operator_tag: v0.1.0
 notification_manager_repo: "{{ base_repo }}kubesphere/notification-manager"
-notification_manager_tag: latest
+notification_manager_tag: v0.1.0
 
 #ks-logger
 docker_elasticsearch_curator_repo: "{{ base_repo }}kubesphere/elasticsearch-curator"
@@ -362,12 +368,15 @@ testFramework_repo: "{{ base_repo }}dduportal/bats"
 testFramework_tag: 0.4.0
 fluentbit_operator_repo: "{{ base_repo }}kubespheredev/fluentbit-operator"
 fluentbit_operator_tag: v0.2.0
+fluentbit_operator_migrator_tag: migrator
 docker_repo: "{{ base_library_repo }}docker"
 docker_tag: 19.03
 ks_fluent_bit_repo: "{{ base_repo }}kubespheredev/fluent-bit"
-ks_fluent_bit_tag: "v1.3.7"
-ks_log_sidecar_injector_repo: "{{ base_repo }}kubesphere/log-sidecar-injector"
-ks_log_sidecar_injector_tag: 1.0
+ks_fluent_bit_tag: "v1.4.6"
+ks_log_sidecar_injector_repo: "{{ base_repo }}kubespheredev/log-sidecar-injector"
+ks_log_sidecar_injector_tag: 1.1
+filebeat_repo: "{{ base_repo }}elastic/filebeat"
+filebeat_tag: 6.7.0
 
 #ks-events
 kube_events_operator_repo: "{{ base_repo }}kubespheredev/kube-events-operator"
@@ -377,6 +386,12 @@ kube_events_exporter_tag: v0.1.0
 kube_events_ruler_repo: "{{ base_repo }}kubespheredev/kube-events-ruler"
 kube_events_ruler_tag: v0.1.0
 
+#ks-auditing
+auditing_operator_repo: "{{ base_repo }}kubespheredev/kube-auditing-operator"
+auditing_operator_tag: v0.1.0
+auditing_webhook_repo: "{{ base_repo }}kubespheredev/kube-auditing-webhook"
+auditing_webhook_tag: v0.1.0
+
 #ingress:
 nginx_ingress_controller_repo: "{{ base_repo }}kubesphere/nginx-ingress-controller"
 nginx_ingress_controller_tag: 0.24.1
@@ -384,8 +399,8 @@ defaultbackend_repo: "{{ base_repo }}mirrorgooglecontainers/defaultbackend-amd64
 defaultbackend_tag: 1.4
 
 #metrics:
-metrics_server_repo: "{{ base_repo }}kubesphere/metrics-server-amd64"
-metrics_server_tag: v0.3.1
+metrics_server_repo: "{{ base_repo }}kubesphere/metrics-server"
+metrics_server_tag: v0.3.7
 
 #istio
 istio_hub: "{{ base_repo }}istio"
@@ -827,6 +842,15 @@ downloads:
     container: true
     repo: "{{ fluentbit_operator_repo }}"
     tag: "{{ fluentbit_operator_tag }}"
+    sha256: "{{ fluentbit_operator|default(None) }}"
+    groups:
+      - kube-node
+
+  fluentbit_operator_migrator:
+    enabled: "{{ logging_enabled }}"
+    container: true
+    repo: "{{ fluentbit_operator_repo }}"
+    tag: "{{ fluentbit_operator_migrator_tag }}"
     sha256: "{{ fluentbit_operator|default(None) }}"
     groups:
       - kube-node

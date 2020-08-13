@@ -1,36 +1,32 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 
 import os
 import sys
 import time
 import shutil
-import yaml
 import json
 import datetime
 import ansible_runner
 import collections
-
-
-# playbookBasePath = '/root/ks-installer/playbooks'
-# privateDataDir = '/etc/kubesphere/results'
-# configFile = '/root/ks-installer/controller/config.yaml'
+from kubernetes import client, config
 
 playbookBasePath = '/kubesphere/playbooks'
 privateDataDir = '/kubesphere/results'
-configFile = '/kubesphere/config/ks-config.yaml'
+configFile = '/kubesphere/config/ks-config.json'
+statusFile = '/kubesphere/config/ks-status.json'
 
 ks_hook = '''
 {
 	"onKubernetesEvent": [{
-		"name": "Monitor configmap",
-		"kind": "ConfigMap",
+		"name": "Monitor clusterconfiguration",
+		"kind": "ClusterConfiguration",
 		"event": [ "add", "update" ],
 		"objectName": "ks-installer",
 		"namespaceSelector": {
 			"matchNames": ["kubesphere-system"]
 		},
-		"jqFilter": ".data",
+		"jqFilter": ".spec",
 		"allowFailure": false
 	}]
 }
@@ -82,16 +78,16 @@ class component():
 
 def getResultInfo():
     resultsList = checkExecuteResult()
-    # print(resultsList)
+    resultState = False
     for taskResult in resultsList:
-        taskName = taskResult.keys()[0]
-        taskRC = taskResult.values()[0]
+        taskName = list(taskResult.keys())[0]
+        taskRC = list(taskResult.values())[0]
 
         if taskRC != 0:
+            resultState = resultState or True
             resultInfoPath = os.path.join(
                 privateDataDir,
                 str(taskName),
-                # 'artifacts/',
                 str(taskName),
                 'job_events'
             )
@@ -109,11 +105,11 @@ def getResultInfo():
                 print('*' * 150)
                 print(json.dumps(failedEvent, sort_keys=True, indent=2))
                 print('*' * 150)
-
+    return resultState
 # Operation result check
 
 
-def checkExecuteResult(interval=5):
+def checkExecuteResult(interval=10):
     '''
     :param interval: Result inspection cycle. Unit: second(s)
     '''
@@ -123,23 +119,25 @@ def checkExecuteResult(interval=5):
     while True:
         time.sleep(interval)
         completedTasks = []
-
+        statusInfo = []
         for taskProcess in taskProcessList:
-            taskName = taskProcess.keys()[0]
+            taskName = list(taskProcess.keys())[0]
             result = taskProcess[taskName].rc
             if result is not None:
-                print(
-                    "task {} status is {}".format(
+                statusInfo.append("task {} status is {}".format(
                         taskName,
                         taskProcess[taskName].status))
                 completedTasks.append({taskName: result})
+            else:
+                statusInfo.append("task {} status is running".format(taskName))
 
         if len(completedTasks) != 0:
-            print(
-                "total: {}     completed:{}".format(
+            statusInfo.append("total: {}     completed:{}".format(
                     taskProcessListLen,
                     len(completedTasks)))
-            print('*' * 50)
+            statusInfo.append('*' * 50)
+
+            print("\n".join(statusInfo))
 
         if len(completedTasks) == taskProcessListLen:
             break
@@ -188,30 +186,42 @@ def generateTaskLists():
 
 
 def getComponentLists():
-    readyToEnabledList = ['monitoring']
+    readyToEnabledList = ['monitoring', 'multicluster']
     readyToDisableList = []
     global configFile
 
     if os.path.exists(configFile):
         with open(configFile, 'r') as f:
-            configs = yaml.load(f.read(), Loader=yaml.FullLoader)
+            configs = json.load(f)
         f.close()
     else:
         print("The configuration file does not exist !  {}".format(configFile))
         exit()
 
     for component, parameters in configs.items():
-        if type(parameters) is not str:
-            for j, value in parameters.items():
-                if (j == 'enabled') and (value):
-                    readyToEnabledList.append(component)
-                    break
-                elif (j == 'enabled') and (value == False):
-                    readyToDisableList.append(component)
-                    break
+        if (type(parameters) is not str) or (type(parameters) is not int):
+            try: 
+                for j, value in parameters.items():
+                    if (j == 'enabled') and (value == True):
+                        readyToEnabledList.append(component)
+                        break
+                    elif (j == 'enabled') and (value == False):
+                        readyToDisableList.append(component)
+                        break
+            except:
+                pass
     try:
         readyToEnabledList.remove("metrics_server")
-        readyToEnabledList.remove("metrics-server")
+    except:
+        pass
+
+    try:
+        readyToEnabledList.remove("networkpolicy")
+    except:
+        pass
+
+    try:
+        readyToEnabledList.remove("telemetry")
     except:
         pass
 
@@ -249,7 +259,18 @@ def preInstallTasks():
             exit()
 
 
-def resultInfo():
+def resultInfo(resultState=False):
+    config = ansible_runner.run(
+        playbook=os.path.join(playbookBasePath, 'ks-config.yaml'),
+        private_data_dir=privateDataDir,
+        artifact_dir=os.path.join(privateDataDir, 'ks-config'),
+        ident='ks-config',
+        quiet=True
+    )
+
+    if config.rc != 0:
+        exit()
+
     result = ansible_runner.run(
         playbook=os.path.join(playbookBasePath, 'result-info.yaml'),
         private_data_dir=privateDataDir,
@@ -260,26 +281,60 @@ def resultInfo():
 
     if result.rc != 0:
         exit()
+    
+    if resultState == False:
+        with open('/kubesphere/playbooks/kubesphere_running', 'r') as f:
+            info = f.read()
+            print(info)        
 
-    with open('/kubesphere/playbooks/kubesphere_running', 'r') as f:
-        info = f.read()
-        print(info)
 
+    telemeter = ansible_runner.run(
+        playbook=os.path.join(playbookBasePath, 'telemetry.yaml'),
+        private_data_dir=privateDataDir,
+        artifact_dir=os.path.join(privateDataDir, 'telemetry'),
+        ident='telemetry',
+        quiet=True
+    )
+
+    if telemeter.rc != 0:
+        exit()
 
 def generateConfig():
-    cmdGetConfig = r"kubectl get cm -n kubesphere-system ks-installer -o jsonpath='{.data}' | grep -v '\[\|\]' > /kubesphere/config/ks-config.yaml"
-    os.system(cmdGetConfig)
+    config.load_incluster_config()
+    api = client.CustomObjectsApi()
 
+    resource = api.get_namespaced_custom_object(
+        group="installer.kubesphere.io",
+        version="v1alpha1",
+        name="ks-installer",
+        namespace="kubesphere-system",
+        plural="clusterconfigurations",
+    )
+     
+    cluster_config = resource['spec']
+    
+    api = client.CoreV1Api()
+    nodes = api.list_node().items
+    
+    cluster_config['nodeNum'] = len(nodes)
+
+    try:
+      with open(configFile, 'w', encoding='utf-8') as f:
+        json.dump(cluster_config, f, ensure_ascii=False, indent=4)
+    except:
+      with open(configFile, 'w', encoding='utf-8') as f:
+        json.dump({"config": "new"}, f, ensure_ascii=False, indent=4)
+
+    try:
+      with open(statusFile, 'w', encoding='utf-8') as f:
+        json.dump({"status": resource['status']}, f, ensure_ascii=False, indent=4)
+    except:
+      with open(statusFile, 'w', encoding='utf-8') as f:
+        json.dump({"status": {"enabledComponents": []}}, f, ensure_ascii=False, indent=4)
 
 def main():
     if not os.path.exists(privateDataDir):
         os.makedirs(privateDataDir)
-
-    tagDate = (datetime.date.today() +
-               datetime.timedelta(-1)).strftime("%Y%m%d")
-    cmd = 'sed -i "/ks_image_tag/s/\:.*/\: dev-{}/g" /kubesphere/installer/roles/download/defaults/main.yml'.format(
-        tagDate)
-    os.system(cmd)
 
     if len(sys.argv) > 1 and sys.argv[1] == "--config":
         print(ks_hook)
@@ -287,8 +342,8 @@ def main():
         generateConfig()
         # execute preInstall tasks
         preInstallTasks()
-        getResultInfo()
-        resultInfo()
+        resultState = getResultInfo()
+        resultInfo(resultState)
 
 
 if __name__ == '__main__':

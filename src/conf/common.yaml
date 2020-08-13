@@ -221,6 +221,11 @@ kibana_enabled: false
 #external_es_url: SHOULD_BE_REPLACED
 #external_es_port: SHOULD_BE_REPLACED
 
+# EVENTS CONFIGURATION
+events_enabled: false
+events_ruler_enabled: false
+events_ruler_replicas: 2
+
 # DEVOPS CONFIGURATION
 # Devops is an optional component for KubeSphere.
 devops_enabled: false
@@ -237,7 +242,7 @@ sonarqube_enabled: false
 # Following components are all optional for KubeSphere,
 # Which could be turned on to install it before installation or later by updating its value to true
 openpitrix_enabled: false
-metrics_server_enabled: false
+metrics_server_enabled: true
 servicemesh_enabled: false
 notification_enabled: false
 alerting_enabled: false
